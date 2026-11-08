@@ -11,3 +11,11 @@ npm start
 ```
 
 Use the Expo CLI prompts to open the app on a device or simulator. To start directly on a platform, run `npm run ios` or `npm run android` from `mobile/`.
+
+## Web hosting
+
+The web app is exported as a static site and deployed to GitHub Pages whenever changes are pushed to `main`. After the first successful deployment, open:
+
+https://rmake001.github.io/cloud-block/
+
+The layout stays phone-sized on wider browser windows and fills the screen on mobile.

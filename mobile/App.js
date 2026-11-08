@@ -21,13 +21,11 @@ import {
 } from "react-native-safe-area-context";
 import CloudLogo from "./CloudLogo";
 import CloudCard3D from "./CloudCard3D";
-import ConnectScene from "./ConnectScene";
 import HomeScene from "./HomeScene";
 
 const USE_NATIVE_DRIVER = Platform.OS !== "web";
 const BUILDING_STORAGE_KEY = "cloudblock.selectedBuilding.v1";
 const USER_CARD_STORAGE_KEY = "cloudblock.userCard.v1";
-const CONNECT_SCENE_HEIGHT = 156;
 const SERIF = Platform.select({
   ios: "Georgia",
   android: "serif",
@@ -320,23 +318,12 @@ function HomeScreen({
   );
 }
 
-function PageHeader({ kicker, title, building, cloudTitle = false }) {
+function PageHeader({ kicker, title, building }) {
   return (
     <View style={styles.pageHeader}>
       {kicker ? <Text style={styles.pageKicker}>{kicker}</Text> : null}
       <View style={styles.pageHeaderRow}>
-        {cloudTitle ? (
-          <View style={styles.cloudPageTitle}>
-            <View style={[styles.pageTitlePuff, styles.pageTitlePuffLeft]} />
-            <View style={[styles.pageTitlePuff, styles.pageTitlePuffCenter]} />
-            <View style={[styles.pageTitlePuff, styles.pageTitlePuffRight]} />
-            <Text style={[styles.pageTitle, styles.cloudPageTitleText]}>
-              {title}
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.pageTitle}>{title}</Text>
-        )}
+        <Text style={styles.pageTitle}>{title}</Text>
         <Text style={styles.pageMark}>CB</Text>
       </View>
       {building ? (
@@ -382,7 +369,6 @@ function CloudAvatar() {
 function NeighborWindow({
   neighbor,
   index,
-  selected,
   onTogglePrivacy,
   privacyError,
 }) {
@@ -427,7 +413,6 @@ function NeighborWindow({
     <Animated.View
       style={[
         styles.neighborCard,
-        selected && styles.neighborCardSelected,
         { opacity: entrance, transform: [{ translateY }] },
       ]}
     >
@@ -570,24 +555,14 @@ function ConnectScreen({
   const floors = [...new Set(profiles.map((neighbor) => neighbor.floor))].sort(
     (first, second) => second - first,
   );
-  const [selectedApartment, setSelectedApartment] = useState(null);
-
   return (
     <View style={styles.screen}>
-      <PageHeader title="Connect" building={building} cloudTitle />
+      <PageHeader title="Connect" building={building} />
       <ScrollView
         contentContainerStyle={styles.connectContent}
         showsVerticalScrollIndicator={false}
       >
         <CloudMatesCard count={buildingNeighbors.length} />
-        {profiles.length ? (
-          <ConnectScene
-            neighbors={profiles}
-            onSelectNeighbor={(neighbor) =>
-              setSelectedApartment(neighbor.apartment)
-            }
-          />
-        ) : null}
         {profiles.length === 0 ? (
           <View style={styles.emptyPanel}>
             <Text style={styles.emptyTitle}>No neighbors yet</Text>
@@ -621,7 +596,6 @@ function ConnectScreen({
                       key={`${neighbor.isCurrentUser ? "you" : "neighbor"}-${neighbor.apartment}`}
                       neighbor={neighbor}
                       index={index}
-                      selected={selectedApartment === neighbor.apartment}
                       onTogglePrivacy={
                         neighbor.isCurrentUser ? onTogglePrivacy : undefined
                       }
@@ -771,7 +745,7 @@ function ContributeScreen({ building, reducedMotion }) {
 
   return (
     <View style={styles.screen}>
-      <PageHeader kicker="" title="Contribute" building={building} cloudTitle />
+      <PageHeader title="Contribute" building={building} />
       <View accessibilityRole="tablist" style={styles.boardTabs}>
         {[
           { key: "request", label: "Requests" },
@@ -1610,54 +1584,18 @@ const styles = StyleSheet.create({
     alignItems: "baseline",
     justifyContent: "space-between",
   },
-  cloudPageTitle: {
-    position: "relative",
-    minWidth: 118,
-    minHeight: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageTitlePuff: {
-    position: "absolute",
-    backgroundColor: "#F5F8FA",
-    borderRadius: 999,
-  },
-  pageTitlePuffLeft: {
-    left: 4,
-    bottom: 4,
-    width: 35,
-    height: 28,
-  },
-  pageTitlePuffCenter: {
-    left: 28,
-    bottom: 8,
-    width: 48,
-    height: 36,
-  },
-  pageTitlePuffRight: {
-    right: 4,
-    bottom: 4,
-    width: 36,
-    height: 28,
-  },
-  cloudPageTitleText: {
-    zIndex: 1,
-    color: "#283743",
-    fontSize: 17,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-    textAlign: "center",
-  },
   pageTitle: {
     color: "#F6F1E8",
-    fontFamily: SERIF,
-    fontSize: 36,
-    fontWeight: "400",
+    fontFamily: "serif",
+    fontSize: 32,
+    fontWeight: "700",
+    letterSpacing: -0.6,
   },
   pageMark: {
     color: "rgba(232, 181, 106, 0.8)",
+    fontFamily: SERIF,
     fontSize: 11,
-    fontWeight: "600",
+    fontWeight: "700",
     letterSpacing: 1.4,
   },
   pageBuilding: {
@@ -1739,9 +1677,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(246, 241, 232, 0.12)",
     backgroundColor: "rgba(10, 12, 16, 0.78)",
-  },
-  neighborCardSelected: {
-    borderColor: "rgba(240, 194, 122, 0.68)",
   },
   windowFrame: {
     height: 168,
@@ -1982,22 +1917,27 @@ const styles = StyleSheet.create({
   noteSurface: {
     position: "relative",
     width: "100%",
-    minHeight: 166,
-    paddingHorizontal: 24,
-    paddingTop: 46,
-    paddingBottom: 20,
+    maxWidth: 430,
+    minHeight: 184,
+    paddingHorizontal: 12,
+    paddingTop: 40,
+    paddingBottom: 18,
+    alignSelf: "center",
     overflow: "visible",
     backgroundColor: "transparent",
   },
   noteOverlay: {
     zIndex: 1,
+    width: "78%",
+    maxWidth: 270,
+    alignSelf: "center",
   },
   noteDescription: {
     marginTop: 5,
-    paddingRight: 12,
     color: "#52616A",
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: "center",
   },
   noteCloud: {
     position: "absolute",
@@ -2085,7 +2025,8 @@ const styles = StyleSheet.create({
   noteMeta: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 14,
   },
   noteTypeRow: {
     flexDirection: "row",
@@ -2114,13 +2055,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   noteText: {
-    marginTop: 10,
-    paddingRight: 12,
+    marginTop: 7,
     color: "#263742",
     fontFamily: SERIF,
-    fontSize: 20,
-    lineHeight: 26,
-    fontWeight: "400",
+    fontSize: 17,
+    lineHeight: 21,
+    fontWeight: "600",
+    textAlign: "center",
   },
   urgentDot: {
     width: 6,
