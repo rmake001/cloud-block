@@ -1167,9 +1167,9 @@ function BottomNavigation({ activeTab, onSelect, bottomInset }) {
 
 function CloudBlockApp() {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
-  const wide = width >= 760 && width > height * 0.9;
-  const stageWidth = Math.min(430, Math.max(340, Math.round(height * 0.48)));
+  const { width } = useWindowDimensions();
+  const wide = width > 430;
+  const stageWidth = Math.min(430, width);
   const [activeTab, setActiveTab] = useState("home");
   const [building, setBuilding] = useState(null);
   const [targetTab, setTargetTab] = useState("home");
