@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  ImageBackground,
+  AccessibilityInfo,
   KeyboardAvoidingView,
-  Pressable,
   Platform,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,9 +19,27 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import CloudLogo from "./CloudLogo";
+import CloudCard3D from "./CloudCard3D";
+import ConnectScene from "./ConnectScene";
+import HomeScene from "./HomeScene";
 
 const USE_NATIVE_DRIVER = Platform.OS !== "web";
 const BUILDING_STORAGE_KEY = "cloudblock.selectedBuilding.v1";
+const USER_CARD_STORAGE_KEY = "cloudblock.userCard.v1";
+const CONNECT_SCENE_HEIGHT = 156;
+const SERIF = Platform.select({
+  ios: "Georgia",
+  android: "serif",
+  default:
+    "Georgia, 'Iowan Old Style', Palatino, 'Palatino Linotype', 'Times New Roman', serif",
+});
+
+const SCREEN_VEIL =
+  "linear-gradient(to bottom, rgba(6,8,12,0.93) 0%, rgba(6,8,12,0.88) 46%, rgba(6,8,12,0.94) 100%)";
+const WINDOW_WASH =
+  "radial-gradient(ellipse at center, rgba(255,214,160,0.55) 0%, rgba(214,132,58,0.16) 48%, rgba(8,8,10,0) 76%)";
+
 const DEMO_BUILDINGS = [
   {
     id: "cloudblock",
@@ -40,188 +58,16 @@ const DEMO_BUILDINGS = [
   },
 ];
 
-function IntroSplash() {
-  const progress = useRef(new Animated.Value(0)).current;
-  const cloudProgress = useRef(
-    Array.from({ length: 5 }, () => new Animated.Value(0)),
-  ).current;
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.delay(250),
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: 650,
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-      Animated.delay(1450),
-      Animated.timing(progress, {
-        toValue: 2,
-        duration: 850,
-        useNativeDriver: USE_NATIVE_DRIVER,
-      }),
-    ]).start();
-
-    cloudProgress.forEach((value, index) => {
-      Animated.sequence([
-        Animated.delay(180 + index * 260),
-        Animated.timing(value, {
-          toValue: 1,
-          duration: 380,
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-        Animated.delay(850 + index * 100),
-        Animated.timing(value, {
-          toValue: 2,
-          duration: 950,
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }),
-      ]).start();
-    });
-  }, [cloudProgress, progress]);
-
-  const translateY = progress.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [210, 0, -30],
-  });
-  const opacity = progress.interpolate({
-    inputRange: [0, 0.18, 1, 1.65, 2],
-    outputRange: [0, 1, 1, 0.75, 0],
-  });
-  const scale = progress.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0.72, 1, 1.16],
-  });
-  const clouds = [
-    { style: styles.cloudTopLeft, drift: -24, scale: 0.9 },
-    { style: styles.cloudTopRight, drift: 22, scale: 0.72 },
-    { style: styles.cloudMidLeft, drift: -18, scale: 0.66 },
-    { style: styles.cloudMidRight, drift: 25, scale: 0.95 },
-    { style: styles.cloudBottom, drift: -16, scale: 0.8 },
-  ];
-
-  return (
-    <View pointerEvents="none" style={styles.introLayer}>
-      {clouds.map((cloud, index) => {
-        const cloudOpacity = cloudProgress[index].interpolate({
-          inputRange: [0, 0.25, 1, 1.7, 2],
-          outputRange: [0, 0.9, 0.9, 0.5, 0],
-        });
-        const cloudTranslateY = cloudProgress[index].interpolate({
-          inputRange: [0, 1, 2],
-          outputRange: [22, 0, -28],
-        });
-        const cloudTranslateX = cloudProgress[index].interpolate({
-          inputRange: [0, 1, 2],
-          outputRange: [cloud.drift, 0, -cloud.drift],
-        });
-
-        return (
-          <Animated.View
-            key={index}
-            style={[
-              styles.cloudPuff,
-              cloud.style,
-              {
-                opacity: cloudOpacity,
-                transform: [
-                  { translateX: cloudTranslateX },
-                  { translateY: cloudTranslateY },
-                  { scale: cloud.scale },
-                ],
-              },
-            ]}
-          >
-            <View style={styles.cloudPuffBase} />
-            <View style={styles.cloudPuffLeft} />
-            <View style={styles.cloudPuffCenter} />
-            <View style={styles.cloudPuffRight} />
-          </Animated.View>
-        );
-      })}
-      <Animated.View
-        style={[
-          styles.cloudMark,
-          { opacity, transform: [{ translateY }, { scale }] },
-        ]}
-      >
-        <Text style={styles.cloudMarkText}>Cloud Block</Text>
-      </Animated.View>
-    </View>
-  );
-}
-
-function HomeScreen({ building, onChangeBuilding }) {
-  const zoom = useRef(new Animated.Value(0.97)).current;
-  const { height: windowHeight } = useWindowDimensions();
-
-  useEffect(() => {
-    Animated.spring(zoom, {
-      toValue: 1.04,
-      friction: 9,
-      tension: 55,
-      useNativeDriver: USE_NATIVE_DRIVER,
-    }).start();
-  }, [zoom]);
-
-  return (
-    <View style={styles.screen}>
-      <Animated.View style={[styles.homeContent, { transform: [{ scale: zoom }] }]}>
-        <View style={styles.topBar}>
-          <View>
-            <Text style={styles.brand}>CLOUDBLOCK</Text>
-            <Text style={styles.brandCaption}>A little closer, above the clouds.</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onChangeBuilding}
-            style={styles.signInButton}
-          >
-            <Text style={styles.signInText}>Change building</Text>
-          </Pressable>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.homeScroll}
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={[
-              styles.homeHero,
-              { minHeight: Math.max(windowHeight * 0.62, 410) },
-            ]}
-          >
-            <View style={styles.homeBuildingLabel}>
-              <View style={styles.buildingPin} />
-              <Text numberOfLines={1} style={styles.homeBuildingName}>
-                {building?.name || "Choose your building"}
-              </Text>
-            </View>
-            <View style={styles.introCopy}>
-              <Text style={styles.eyebrow}>YOUR NEIGHBORS, JUST AROUND THE CORNER</Text>
-              <Text style={styles.headline}>Find your people.</Text>
-              <Text style={styles.subheadline}>
-                Small moments make a building feel like home.
-              </Text>
-            </View>
-          </View>
-        </ScrollView>
-      </Animated.View>
-      <IntroSplash />
-    </View>
-  );
-}
-
 const neighbors = [
   {
     buildingId: "cloudblock",
     floor: 12,
     name: "Maya Chen",
     apartment: "12A",
-    bio: "Always looking for a tennis partner!",
+    bio: "Always looking for a tennis partner.",
     hobbies: ["Tennis", "Plants", "Pottery"],
     skin: "#C88462",
-    shirt: "#F2AC72",
+    shirt: "#E2A56A",
   },
   {
     buildingId: "willow",
@@ -231,17 +77,17 @@ const neighbors = [
     bio: "Sunday pancakes are kind of my thing.",
     hobbies: ["Cooking", "Jazz", "Running"],
     skin: "#E6B58B",
-    shirt: "#78A99C",
+    shirt: "#7EAEA0",
   },
   {
     buildingId: "cloudblock",
     floor: 9,
     name: "Imani Carter",
     apartment: "9B",
-    bio: "New to the block—say hi anytime.",
+    bio: "New to the block. Say hi anytime.",
     hobbies: ["Cycling", "Books", "Baking"],
     skin: "#754B3E",
-    shirt: "#A38CC2",
+    shirt: "#B39BC8",
   },
   {
     buildingId: "harbor",
@@ -251,7 +97,7 @@ const neighbors = [
     bio: "I know every good coffee spot nearby.",
     hobbies: ["Coffee", "Music", "Climbing"],
     skin: "#D59A72",
-    shirt: "#6F91B3",
+    shirt: "#7F9EBE",
   },
   {
     buildingId: "cloudblock",
@@ -261,7 +107,7 @@ const neighbors = [
     bio: "Happy to trade herbs for good stories.",
     hobbies: ["Gardening", "Yoga", "Art"],
     skin: "#B97652",
-    shirt: "#DA8E98",
+    shirt: "#D9929A",
   },
   {
     buildingId: "willow",
@@ -281,7 +127,7 @@ const neighbors = [
     bio: "I make a very enthusiastic book club.",
     hobbies: ["Reading", "Knitting", "Tea"],
     skin: "#F0C39E",
-    shirt: "#7297AE",
+    shirt: "#7C9CB4",
   },
   {
     buildingId: "harbor",
@@ -291,7 +137,7 @@ const neighbors = [
     bio: "Got a spare seat on my weekend hikes.",
     hobbies: ["Hiking", "Photography", "Dogs"],
     skin: "#D29A78",
-    shirt: "#88A477",
+    shirt: "#8EAA7C",
   },
   {
     buildingId: "cloudblock",
@@ -301,7 +147,7 @@ const neighbors = [
     bio: "A friendly hello makes my whole day.",
     hobbies: ["Board games", "Baking", "Podcasts"],
     skin: "#8C5945",
-    shirt: "#C28163",
+    shirt: "#C48A6C",
   },
   {
     buildingId: "willow",
@@ -311,7 +157,7 @@ const neighbors = [
     bio: "Looking for neighbors to swap playlists.",
     hobbies: ["Music", "Drawing", "Cooking"],
     skin: "#E0AA82",
-    shirt: "#849BC2",
+    shirt: "#8AA3C4",
   },
 ];
 
@@ -321,6 +167,7 @@ const communityPosts = [
     buildingId: "cloudblock",
     type: "request",
     urgency: "urgent",
+    title: "Borrow some flour",
     text: "Can I borrow a cup of flour?",
     unit: "12A",
   },
@@ -329,6 +176,7 @@ const communityPosts = [
     buildingId: "willow",
     type: "offer",
     urgency: "normal",
+    title: "Plant sitting",
     text: "Happy to water your plants this weekend",
     unit: "6A",
   },
@@ -337,7 +185,8 @@ const communityPosts = [
     buildingId: "harbor",
     type: "offer",
     urgency: "urgent",
-    text: "Giving away a bicycle for free!",
+    title: "Free bike",
+    text: "Giving away a bicycle for free.",
     unit: "9D",
   },
   {
@@ -345,6 +194,7 @@ const communityPosts = [
     buildingId: "cloudblock",
     type: "request",
     urgency: "normal",
+    title: "USB-C charger",
     text: "Anyone have a USB-C charger I can borrow?",
     unit: "3B",
   },
@@ -353,7 +203,8 @@ const communityPosts = [
     buildingId: "willow",
     type: "offer",
     urgency: "casual",
-    text: "Extra soup if anyone's feeling cozy",
+    title: "Extra soup",
+    text: "Extra soup if anyone is feeling cozy.",
     unit: "12C",
   },
   {
@@ -361,7 +212,8 @@ const communityPosts = [
     buildingId: "harbor",
     type: "request",
     urgency: "casual",
-    text: "Looking for a walking buddy",
+    title: "Walking buddy",
+    text: "Looking for a walking buddy.",
     unit: "1A",
   },
   {
@@ -369,6 +221,7 @@ const communityPosts = [
     buildingId: "cloudblock",
     type: "request",
     urgency: "urgent",
+    title: "Moving boxes",
     text: "Could someone lend me two moving boxes?",
     unit: "6C",
   },
@@ -377,227 +230,534 @@ const communityPosts = [
     buildingId: "willow",
     type: "offer",
     urgency: "normal",
-    text: "Free books—come pick your favorites",
+    title: "Free books",
+    text: "Free books. Come pick your favorites.",
     unit: "3D",
   },
 ];
 
-function PageHeader({ title, building }) {
+function Fill({ image, style }) {
   return (
-    <View style={styles.pageHeader}>
-      <View>
-        <Text style={styles.pageTitle}>{title}</Text>
-        {building ? (
-          <Text numberOfLines={1} style={styles.pageBuildingName}>
-            {building.name}
-          </Text>
-        ) : null}
+    <View pointerEvents="none" style={[style, { backgroundImage: image }]} />
+  );
+}
+
+function SuccessState({ message }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(progress, {
+      toValue: 1,
+      damping: 17,
+      stiffness: 150,
+      mass: 0.8,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  }, [progress]);
+
+  const scale = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.94, 1],
+  });
+
+  return (
+    <Animated.View
+      accessibilityRole="alert"
+      style={[
+        styles.successState,
+        { opacity: progress, transform: [{ scale }] },
+      ]}
+    >
+      <View style={styles.successCheckCircle}>
+        <Text style={styles.successCheck}>✓</Text>
       </View>
-      <View style={styles.pageHeaderMark}>
-        <Text style={styles.pageHeaderMarkText}>CB</Text>
+      <Text style={styles.successMessage}>{message}</Text>
+    </Animated.View>
+  );
+}
+
+function HomeScreen({
+  active,
+  userCard,
+  onFindBuilding,
+  onOpenUserCard,
+}) {
+  const [logoVisible, setLogoVisible] = useState(true);
+
+  return (
+    <View style={styles.screen}>
+      <HomeScene active={active} />
+      {logoVisible ? (
+        <CloudLogo active={active} onComplete={() => setLogoVisible(false)} />
+      ) : null}
+      <View style={styles.homeActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onFindBuilding}
+          style={({ pressed }) => [
+            styles.homeActionButton,
+            styles.homeActionPrimary,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <Text style={styles.homeActionPrimaryText}>Find your building</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenUserCard}
+          style={({ pressed }) => [
+            styles.homeActionButton,
+            styles.homeActionSecondary,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <Text style={styles.homeActionSecondaryText}>
+            {userCard ? "My Window" : "Create your Window"}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
 }
 
-function ClayNeighbor({ neighbor, index }) {
+function PageHeader({ kicker, title, building, cloudTitle = false }) {
+  return (
+    <View style={styles.pageHeader}>
+      {kicker ? <Text style={styles.pageKicker}>{kicker}</Text> : null}
+      <View style={styles.pageHeaderRow}>
+        {cloudTitle ? (
+          <View style={styles.cloudPageTitle}>
+            <View style={[styles.pageTitlePuff, styles.pageTitlePuffLeft]} />
+            <View style={[styles.pageTitlePuff, styles.pageTitlePuffCenter]} />
+            <View style={[styles.pageTitlePuff, styles.pageTitlePuffRight]} />
+            <Text style={[styles.pageTitle, styles.cloudPageTitleText]}>
+              {title}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.pageTitle}>{title}</Text>
+        )}
+        <Text style={styles.pageMark}>CB</Text>
+      </View>
+      {building ? (
+        <Text numberOfLines={1} style={styles.pageBuilding}>
+          {building.name}
+          {building.address ? `  ·  ${building.address}` : ""}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function CloudMatesCard({ count }) {
+  return (
+    <View style={styles.matesSummary}>
+      <View style={styles.matesCount}>
+        <Text style={styles.matesCountNumber}>{count}</Text>
+        <Text style={styles.matesMeta}>
+          {count === 1 ? "neighbor" : "neighbors"}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function CloudAvatar() {
+  return (
+    <View style={styles.cloudAvatar}>
+      <View style={[styles.avatarPuff, styles.avatarPuffLeft]} />
+      <View style={[styles.avatarPuff, styles.avatarPuffCenter]} />
+      <View style={[styles.avatarPuff, styles.avatarPuffRight]} />
+      <View style={styles.avatarFace}>
+        <View style={styles.avatarEyes}>
+          <View style={styles.avatarEye} />
+          <View style={styles.avatarEye} />
+        </View>
+        <View style={styles.avatarSmile} />
+      </View>
+    </View>
+  );
+}
+
+function NeighborWindow({
+  neighbor,
+  index,
+  selected,
+  onTogglePrivacy,
+  privacyError,
+}) {
   const entrance = useRef(new Animated.Value(0)).current;
+  const [sent, setSent] = useState(false);
+  const blinds = useRef(
+    new Animated.Value(neighbor.privacyMode ? 0 : 1),
+  ).current;
 
   useEffect(() => {
-    Animated.spring(entrance, {
+    const animation = Animated.spring(entrance, {
       toValue: 1,
-      delay: index * 65,
+      delay: index * 70,
       friction: 8,
-      tension: 55,
+      tension: 54,
       useNativeDriver: USE_NATIVE_DRIVER,
-    }).start();
+    });
+    animation.start();
+    return () => animation.stop();
   }, [entrance, index]);
 
-  const translateX = entrance.interpolate({
+  useEffect(() => {
+    Animated.spring(blinds, {
+      toValue: neighbor.privacyMode ? 0 : 1,
+      damping: 18,
+      stiffness: 130,
+      mass: 0.8,
+      useNativeDriver: USE_NATIVE_DRIVER,
+    }).start();
+  }, [blinds, neighbor.privacyMode]);
+
+  const translateY = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [34, 0],
+    outputRange: [22, 0],
   });
-  const avatarStyle = {
-    backgroundColor: neighbor.skin,
-  };
-  const shirtStyle = {
-    backgroundColor: neighbor.shirt,
-  };
+  const blindOffset = blinds.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -168],
+  });
 
   return (
     <Animated.View
       style={[
         styles.neighborCard,
-        { opacity: entrance, transform: [{ translateX }] },
+        selected && styles.neighborCardSelected,
+        { opacity: entrance, transform: [{ translateY }] },
       ]}
     >
-      <View style={styles.neighborCardTop}>
-        <View style={styles.apartmentBadge}>
-          <Text style={styles.apartmentBadgeText}>APT {neighbor.apartment}</Text>
-        </View>
-        <Text style={styles.neighborSparkle}>✦</Text>
+      <View style={styles.windowFrame}>
+        <View style={styles.windowLight} />
+        <Text
+          accessible={!neighbor.privacyMode}
+          accessibilityElementsHidden={neighbor.privacyMode}
+          importantForAccessibility={
+            neighbor.privacyMode ? "no-hide-descendants" : "auto"
+          }
+          style={[
+            styles.windowUnit,
+            neighbor.privacyMode && styles.privateProfileText,
+          ]}
+        >
+          APT {neighbor.privacyMode ? "**" : neighbor.apartment}
+        </Text>
+        {neighbor.privacyMode ? (
+          <Text style={styles.privateBadge}>PRIVATE</Text>
+        ) : null}
+        <CloudAvatar />
+        {neighbor.privacyMode ? (
+          <Animated.View
+            style={[
+              styles.blindPanel,
+              { transform: [{ translateY: blindOffset }] },
+            ]}
+          >
+            {Array.from({ length: 8 }, (_, slat) => (
+              <View key={slat} style={styles.blindSlat} />
+            ))}
+          </Animated.View>
+        ) : null}
       </View>
-      <View style={styles.neighborPortrait}>
-        <View style={[styles.personBody, shirtStyle]}>
-          <View style={[styles.personNeck, avatarStyle]} />
-          <View style={[styles.personHead, avatarStyle]}>
-            <View style={styles.personHighlight} />
-            <View style={styles.personEyes}>
-              <View style={styles.personEye} />
-              <View style={styles.personEye} />
-            </View>
-            <View style={styles.personSmile} />
-          </View>
-        </View>
-        <View style={styles.portraitShine} />
-      </View>
-      <Text style={styles.neighborName}>{neighbor.name}</Text>
-      <Text style={styles.neighborBio}>{neighbor.bio}</Text>
-      <View style={styles.hobbyRow}>
-        {neighbor.hobbies.map((hobby) => (
-          <View key={hobby} style={styles.hobbyTag}>
-            <Text style={styles.hobbyText}>{hobby}</Text>
-          </View>
-        ))}
-      </View>
-      <Pressable style={styles.sayHelloButton}>
-        <Text style={styles.sayHelloText}>Say hello</Text>
-        <Text style={styles.sayHelloArrow}>↗</Text>
-      </Pressable>
+      <Text
+        accessible={!neighbor.privacyMode}
+        accessibilityElementsHidden={neighbor.privacyMode}
+        importantForAccessibility={
+          neighbor.privacyMode ? "no-hide-descendants" : "auto"
+        }
+        style={[
+          styles.neighborName,
+          neighbor.privacyMode && styles.privateProfileText,
+        ]}
+      >
+        {neighbor.privacyMode ? "**" : neighbor.name}
+      </Text>
+      <Text
+        accessible={!neighbor.privacyMode}
+        accessibilityElementsHidden={neighbor.privacyMode}
+        importantForAccessibility={
+          neighbor.privacyMode ? "no-hide-descendants" : "auto"
+        }
+        style={[
+          styles.neighborBio,
+          neighbor.privacyMode && styles.privateProfileText,
+        ]}
+      >
+        {neighbor.privacyMode ? "**" : neighbor.bio}
+      </Text>
+      <Text
+        accessible={!neighbor.privacyMode}
+        accessibilityElementsHidden={neighbor.privacyMode}
+        importantForAccessibility={
+          neighbor.privacyMode ? "no-hide-descendants" : "auto"
+        }
+        style={[
+          styles.neighborHobbies,
+          neighbor.privacyMode && styles.privateProfileText,
+        ]}
+      >
+        {neighbor.privacyMode ? "**" : neighbor.hobbies.join("   ·   ")}
+      </Text>
+      {neighbor.isCurrentUser ? (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: neighbor.privacyMode }}
+            onPress={onTogglePrivacy}
+            style={[
+              styles.helloButton,
+              neighbor.privacyMode && styles.helloButtonSent,
+            ]}
+          >
+            <Text
+              style={[
+                styles.helloText,
+                neighbor.privacyMode && styles.helloTextSent,
+              ]}
+            >
+              {neighbor.privacyMode ? "Privacy mode on" : "Go private"}
+            </Text>
+          </Pressable>
+          {privacyError ? (
+            <Text accessibilityRole="alert" style={styles.pickerError}>
+              {privacyError}
+            </Text>
+          ) : null}
+        </>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: sent }}
+          onPress={() => setSent(true)}
+          style={[styles.helloButton, sent && styles.helloButtonSent]}
+        >
+          <Text style={[styles.helloText, sent && styles.helloTextSent]}>
+            {sent ? "Hello sent" : "Say hello"}
+          </Text>
+        </Pressable>
+      )}
     </Animated.View>
   );
 }
 
-function ConnectScreen({ building }) {
-  const buildingNeighbors = neighbors.filter(
+function ConnectScreen({
+  building,
+  userCard,
+  onTogglePrivacy,
+  privacyError,
+}) {
+  const buildingNeighbors = useMemo(() => neighbors.filter(
     (neighbor) => neighbor.buildingId === building.id,
-  );
-  const floors = [...new Set(buildingNeighbors.map((neighbor) => neighbor.floor))].sort(
+  ), [building.id]);
+  const profiles = useMemo(() => {
+    const currentUser = userCard
+      ? {
+        ...userCard,
+        buildingId: building.id,
+        floor: Number.parseInt(userCard.apartment, 10) || 1,
+        isCurrentUser: true,
+        skin: "#D9AA86",
+        shirt: "#98A9B2",
+        hobbies: ["Your CloudBlock window"],
+      }
+      : null;
+    return currentUser ? [...buildingNeighbors, currentUser] : buildingNeighbors;
+  }, [building.id, buildingNeighbors, userCard]);
+  const floors = [...new Set(profiles.map((neighbor) => neighbor.floor))].sort(
     (first, second) => second - first,
   );
+  const [selectedApartment, setSelectedApartment] = useState(null);
 
   return (
     <View style={styles.screen}>
-      <PageHeader title="Connect" building={building} />
+      <PageHeader title="Connect" building={building} cloudTitle />
       <ScrollView
         contentContainerStyle={styles.connectContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.communityIntro}>
-          <Text style={styles.eyebrow}>GOOD THINGS LIVE NEXT DOOR</Text>
-          <Text style={styles.communityTitle}>Meet your neighbors.</Text>
-          <Text style={styles.communityDescription}>
-            A familiar face makes a building feel like home.
-          </Text>
-          <View style={styles.neighborCount}>
-            <Text style={styles.neighborCountText}>
-              {buildingNeighbors.length} neighbors · {floors.length} floors
-            </Text>
-          </View>
-        </View>
-        {buildingNeighbors.length === 0 ? (
-          <View style={styles.emptyCommunity}>
-            <Text style={styles.emptyCommunityIcon}>✦</Text>
-            <Text style={styles.emptyCommunityTitle}>A fresh start.</Text>
-            <Text style={styles.emptyCommunityText}>
-              There are no demo neighbor profiles for this building yet.
-            </Text>
-          </View>
+        <CloudMatesCard count={buildingNeighbors.length} />
+        {profiles.length ? (
+          <ConnectScene
+            neighbors={profiles}
+            onSelectNeighbor={(neighbor) =>
+              setSelectedApartment(neighbor.apartment)
+            }
+          />
         ) : null}
-        {floors.map((floor) => {
-          const floorNeighbors = buildingNeighbors.filter(
-            (neighbor) => neighbor.floor === floor,
-          );
-          return (
-            <View key={floor} style={styles.floorSection}>
-              <View style={styles.floorHeading}>
-                <View style={styles.floorPill}>
-                  <Text style={styles.floorPillText}>
+        {profiles.length === 0 ? (
+          <View style={styles.emptyPanel}>
+            <Text style={styles.emptyTitle}>No neighbors yet</Text>
+          </View>
+        ) : (
+          floors.map((floor) => {
+            const floorNeighbors = profiles.filter(
+              (neighbor) => neighbor.floor === floor,
+            );
+            return (
+              <View key={floor} style={styles.floorSection}>
+                <View style={styles.floorHeading}>
+                  <Text style={styles.floorIndex}>
                     {String(floor).padStart(2, "0")}
                   </Text>
+                  <View style={styles.floorRule} />
+                  <Text style={styles.floorCount}>
+                    {floorNeighbors.length}{" "}
+                    {floorNeighbors.length === 1 ? "neighbor" : "neighbors"}
+                  </Text>
                 </View>
-                <Text style={styles.floorHeadingTitle}>Floor {floor}</Text>
-                <Text style={styles.floorHeadingCount}>
-                  {floorNeighbors.length} neighbors
-                </Text>
+                <ScrollView
+                  horizontal
+                  contentContainerStyle={styles.neighborCarousel}
+                  decelerationRate="fast"
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={276}
+                >
+                  {floorNeighbors.map((neighbor, index) => (
+                    <NeighborWindow
+                      key={`${neighbor.isCurrentUser ? "you" : "neighbor"}-${neighbor.apartment}`}
+                      neighbor={neighbor}
+                      index={index}
+                      selected={selectedApartment === neighbor.apartment}
+                      onTogglePrivacy={
+                        neighbor.isCurrentUser ? onTogglePrivacy : undefined
+                      }
+                      privacyError={
+                        neighbor.isCurrentUser ? privacyError : ""
+                      }
+                    />
+                  ))}
+                </ScrollView>
               </View>
-              <ScrollView
-                horizontal
-                contentContainerStyle={styles.neighborCarousel}
-                decelerationRate="fast"
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={284}
-              >
-                {floorNeighbors.map((neighbor, index) => (
-                  <ClayNeighbor
-                    key={neighbor.apartment}
-                    neighbor={neighbor}
-                    index={index}
-                  />
-                ))}
-              </ScrollView>
-            </View>
-          );
-        })}
+            );
+          })
+        )}
       </ScrollView>
     </View>
   );
 }
 
-function CommunityCloud({ post, index }) {
-  const urgency = post.urgency;
+function FloatingNote({ post, index, reducedMotion }) {
   const entrance = useRef(new Animated.Value(0)).current;
+  const hover = useRef(new Animated.Value(0)).current;
+  const [expanded, setExpanded] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    Animated.spring(entrance, {
+    const intro = Animated.spring(entrance, {
       toValue: 1,
-      delay: index * 75,
+      delay: index * 80,
       friction: 8,
-      tension: 52,
+      tension: 48,
       useNativeDriver: USE_NATIVE_DRIVER,
-    }).start();
-  }, [entrance, index]);
+    });
+    intro.start();
+    if (!reducedMotion) {
+      const float = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hover, {
+            toValue: 1,
+            duration: 3400 + index * 240,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+          Animated.timing(hover, {
+            toValue: 0,
+            duration: 3400 + index * 240,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }),
+        ]),
+      );
+      float.start();
+      return () => {
+        intro.stop();
+        float.stop();
+      };
+    }
+    return () => {
+      intro.stop();
+    };
+  }, [entrance, hover, index, reducedMotion]);
 
-  const scale = entrance.interpolate({
+  const introY = entrance.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.82, 1],
+    outputRange: [26, 0],
   });
+  const floatY = hover.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, index % 2 === 0 ? -7 : 7],
+  });
+  const toggleExpanded = () => setExpanded((value) => !value);
 
   return (
     <Animated.View
       style={[
-        styles.cloudPost,
-        styles[`cloudPost_${post.type}`],
-        styles[`cloudPost_${urgency}`],
+        styles.noteFloat,
         {
           opacity: entrance,
           transform: [
-            { scale },
-            { rotate: index % 2 === 0 ? "-2deg" : "2deg" },
+            { translateY: Animated.add(introY, floatY) },
           ],
         },
       ]}
     >
-      <View style={styles.postCloudPuffLeft} />
-      <View style={styles.postCloudPuffRight} />
-      <Text style={styles.cloudPostType}>
-        {post.type === "request" ? "NEED A HAND" : "HAPPY TO SHARE"}
-      </Text>
-      <Text style={styles.cloudPostText}>{post.text}</Text>
-      <Text style={styles.cloudPostUnit}>APT {post.unit}</Text>
-      {urgency === "urgent" ? (
-        <View style={styles.urgentDot} />
-      ) : null}
+      <View style={styles.noteSurface}>
+        <CloudCard3D
+          title={post.title}
+          description={post.text}
+          type={post.type}
+          reducedMotion={reducedMotion}
+          onPress={toggleExpanded}
+          accessibilityLabel={`${post.type} from apartment ${post.unit}: ${post.title}`}
+          accessibilityHint={expanded ? "Collapse details" : "Expand details"}
+        />
+        <View style={styles.noteOverlay} pointerEvents="none">
+          <View style={styles.noteMeta}>
+            <Text style={[styles.noteType, post.type === "offer" && styles.noteTypeCool]}>
+              {post.type === "request" ? "REQUEST" : "OFFER"}
+            </Text>
+            <Text style={styles.noteUnit}>APT {post.unit}</Text>
+          </View>
+          <Text numberOfLines={expanded ? 3 : 2} style={styles.noteText}>
+            {post.title}
+          </Text>
+          <Text numberOfLines={expanded ? 3 : 2} style={styles.noteDescription}>
+            {post.text}
+          </Text>
+        </View>
+        {expanded ? (
+          <View style={styles.noteDetails}>
+            <Text style={styles.noteDetailsText}>
+              {post.urgency === "urgent" ? "Urgent" : post.type === "offer" ? "Available to neighbors" : "From a neighbor"}
+            </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={saved ? "Remove saved post" : "Save post"}
+            accessibilityState={{ selected: saved }}
+            onPress={() => setSaved((value) => !value)}
+            style={styles.noteSaveButton}
+          >
+            <Text style={styles.noteSaveText}>{saved ? "Saved" : "Save"}</Text>
+          </Pressable>
+          </View>
+        ) : null}
+      </View>
     </Animated.View>
   );
 }
 
-function ContributeScreen({ building }) {
+function ContributeScreen({ building, reducedMotion }) {
   const [filter, setFilter] = useState("request");
   const [search, setSearch] = useState("");
   const buildingPosts = communityPosts.filter(
     (post) => post.buildingId === building.id,
   );
+  const counts = {
+    request: buildingPosts.filter((post) => post.type === "request").length,
+    offer: buildingPosts.filter((post) => post.type === "offer").length,
+  };
   const visiblePosts = buildingPosts.filter((post) => {
     const matchesType = post.type === filter;
     const query = search.trim().toLowerCase();
@@ -611,70 +771,71 @@ function ContributeScreen({ building }) {
 
   return (
     <View style={styles.screen}>
-      <PageHeader title="Community board" building={building} />
-      <View style={styles.boardIntro}>
-        <Text style={styles.eyebrow}>A LITTLE HELP GOES A LONG WAY</Text>
-        <Text style={styles.communityTitle}>The cloud board.</Text>
-        <Text style={styles.communityDescription}>
-          Share what you need, or what you have to give.
-        </Text>
-      </View>
-      <View style={styles.boardTabs}>
+      <PageHeader kicker="" title="Contribute" building={building} cloudTitle />
+      <View accessibilityRole="tablist" style={styles.boardTabs}>
         {[
-          { key: "request", label: "Requests", icon: "↗" },
-          { key: "offer", label: "Offers", icon: "♡" },
-        ].map((tab) => (
-          <Pressable
-            key={tab.key}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: filter === tab.key }}
-            onPress={() => setFilter(tab.key)}
-            style={[
-              styles.boardTab,
-              filter === tab.key && styles.boardTabSelected,
-            ]}
-          >
-            <Text
-              style={[
-                styles.boardTabText,
-                filter === tab.key && styles.boardTabTextSelected,
-              ]}
+          { key: "request", label: "Requests" },
+          { key: "offer", label: "Offers" },
+        ].map((tab) => {
+          const selected = filter === tab.key;
+          return (
+            <Pressable
+              key={tab.key}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setFilter(tab.key)}
+              style={[styles.boardTab, selected && styles.boardTabSelected]}
             >
-              {tab.icon} {tab.label}
-            </Text>
-          </Pressable>
-        ))}
+              <Text
+                style={[styles.boardTabText, selected && styles.boardTabTextSelected]}
+              >
+                {tab.label}
+              </Text>
+              <Text
+                style={[styles.boardTabCount, selected && styles.boardTabTextSelected]}
+              >
+                {counts[tab.key]}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
       <ScrollView
-        contentContainerStyle={styles.cloudBoard}
+        contentContainerStyle={styles.boardScroll}
+        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {visiblePosts.length ? (
           visiblePosts.map((post, index) => (
-            <CommunityCloud key={post.id} post={post} index={index} />
+            <FloatingNote
+              key={post.id}
+              post={post}
+              index={index}
+              reducedMotion={reducedMotion}
+            />
           ))
         ) : (
-          <View style={styles.emptyBoard}>
-            <Text style={styles.emptyBoardCloud}>☁</Text>
-            <Text style={styles.emptyBoardTitle}>
-              {buildingPosts.length ? "No clouds found" : "Clear skies for now"}
+          <View style={styles.emptyPanel}>
+            <Text style={styles.emptyTitle}>
+              {buildingPosts.length ? "Nothing matches" : "Clear skies"}
             </Text>
-            <Text style={styles.emptyBoardText}>
+            <Text style={styles.emptyText}>
               {buildingPosts.length
                 ? "Try another search."
-                : "There are no demo posts for this building yet."}
+                : "Nothing here yet."}
             </Text>
           </View>
         )}
       </ScrollView>
-      <View style={styles.boardSearchBar}>
+      <View style={styles.searchBar}>
         <Text style={styles.searchIcon}>⌕</Text>
         <TextInput
           accessibilityLabel="Search community board"
           autoCapitalize="none"
+          keyboardAppearance="dark"
           onChangeText={setSearch}
-          placeholder={`Search ${filter === "request" ? "requests" : "offers"}…`}
-          placeholderTextColor="#8AA4B7"
+          placeholder={`Search ${filter === "request" ? "requests" : "offers"}`}
+          placeholderTextColor="#8E8A84"
           returnKeyType="search"
           style={styles.searchInput}
           value={search}
@@ -696,10 +857,9 @@ function ContributeScreen({ building }) {
 
 function BuildingPicker({
   visible,
-  currentBuilding,
   error,
   saving,
-  onCancel,
+  joined,
   onEnter,
 }) {
   const [query, setQuery] = useState("");
@@ -713,6 +873,12 @@ function BuildingPicker({
       building.name.toLowerCase() === normalizedQuery ||
       building.address.toLowerCase() === normalizedQuery,
   );
+
+  useEffect(() => {
+    if (!visible) return;
+    setQuery("");
+    setSelection(null);
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -735,43 +901,30 @@ function BuildingPicker({
       <View style={styles.pickerScrim} />
       <View style={styles.pickerCenter}>
         <View style={styles.pickerCard}>
-          <View style={styles.pickerTopline}>
-            <View style={styles.pickerIcon}>
-              <Text style={styles.pickerIconText}>⌂</Text>
-            </View>
-            {currentBuilding ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onCancel}
-                style={styles.pickerCancel}
-              >
-                <Text style={styles.pickerCancelText}>Cancel</Text>
-              </Pressable>
-            ) : null}
-          </View>
-          <Text style={styles.pickerEyebrow}>WELCOME TO THE NEIGHBORHOOD</Text>
-          <Text style={styles.pickerTitle}>Find Your Building</Text>
-          <Text style={styles.pickerDescription}>
-            Search a demo building or enter your own address.
-          </Text>
-          <TextInput
+          {joined ? (
+            <SuccessState message="Joined Building Successfully!" />
+          ) : (
+            <>
+              <Text style={styles.pickerTitle}>Find Your Building</Text>
+              <TextInput
             accessibilityLabel="Building name or address"
             autoCapitalize="words"
             autoCorrect={false}
+            keyboardAppearance="dark"
             onChangeText={(value) => {
               setQuery(value);
               setSelection(null);
             }}
             placeholder="Building name or address"
-            placeholderTextColor="#9A9AA0"
+            placeholderTextColor="#8E8A84"
             returnKeyType="search"
             style={styles.pickerInput}
             value={query}
-          />
-          <Text style={styles.suggestionsLabel}>
-            {normalizedQuery ? "MATCHING BUILDINGS" : "SUGGESTED BUILDINGS"}
-          </Text>
-          <ScrollView
+              />
+              <Text style={styles.suggestionsLabel}>
+            {normalizedQuery ? "MATCHING BUILDINGS" : "SUGGESTED"}
+              </Text>
+              <ScrollView
             keyboardShouldPersistTaps="handled"
             style={styles.suggestionList}
             contentContainerStyle={styles.suggestionListContent}
@@ -790,16 +943,11 @@ function BuildingPicker({
                     isSelected && styles.buildingSuggestionSelected,
                   ]}
                 >
-                  <View style={styles.suggestionPin}>
-                    <View style={styles.suggestionPinCenter} />
-                  </View>
                   <View style={styles.suggestionCopy}>
                     <Text style={styles.suggestionName}>{building.name}</Text>
                     <Text style={styles.suggestionAddress}>{building.address}</Text>
                   </View>
-                  <Text style={styles.suggestionCheck}>
-                    {isSelected ? "✓" : "›"}
-                  </Text>
+                  <Text style={styles.suggestionCheck}>{isSelected ? "✓" : "›"}</Text>
                 </Pressable>
               );
             })}
@@ -816,9 +964,6 @@ function BuildingPicker({
                     styles.buildingSuggestionSelected,
                 ]}
               >
-                <View style={styles.suggestionPin}>
-                  <View style={styles.suggestionPinCenter} />
-                </View>
                 <View style={styles.suggestionCopy}>
                   <Text style={styles.suggestionName}>Use this address</Text>
                   <Text numberOfLines={1} style={styles.suggestionAddress}>
@@ -830,13 +975,9 @@ function BuildingPicker({
                 </Text>
               </Pressable>
             ) : null}
-          </ScrollView>
-          {error ? <Text style={styles.pickerError}>{error}</Text> : null}
-          <Text style={styles.pickerDisclaimer}>
-            Demo locations only. Entering an address does not verify residency
-            or sign you in.
-          </Text>
-          <Pressable
+              </ScrollView>
+              {error ? <Text style={styles.pickerError}>{error}</Text> : null}
+              <Pressable
             accessibilityRole="button"
             accessibilityState={{ disabled: !selection || saving }}
             disabled={!selection || saving}
@@ -846,11 +987,131 @@ function BuildingPicker({
               (!selection || saving) && styles.enterBuildingButtonDisabled,
               pressed && selection && !saving && styles.buttonPressed,
             ]}
+              >
+                <Text style={styles.enterBuildingText}>
+              {saving ? "Saving…" : "Enter building"}
+                </Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+function UserCardEditor({
+  visible,
+  building,
+  userCard,
+  saving,
+  error,
+  windowAdded,
+  onSave,
+  onDismiss,
+}) {
+  const [name, setName] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [bio, setBio] = useState("");
+
+  useEffect(() => {
+    if (!visible) return;
+    setName(userCard?.name || "");
+    setApartment(userCard?.apartment || "");
+    setBio(userCard?.bio || "");
+  }, [visible, userCard]);
+
+  if (!visible) return null;
+
+  const canSave = Boolean(name.trim() && apartment.trim() && !saving);
+
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={styles.profileOverlay}
+    >
+      <View style={styles.pickerScrim} />
+      <View style={styles.pickerCenter}>
+        <View style={styles.pickerCard}>
+          <Text style={styles.pickerTitle}>
+            {userCard ? "Your Window" : "Create your Window"}
+          </Text>
+          {windowAdded ? (
+            <SuccessState message="Your Window Added Successfully!" />
+          ) : (
+            <>
+          <TextInput
+            accessibilityLabel="Name on your window"
+            autoCapitalize="words"
+            autoCorrect={false}
+            keyboardAppearance="dark"
+            onChangeText={setName}
+            placeholder="Name"
+            placeholderTextColor="#8E8A84"
+            returnKeyType="next"
+            style={styles.pickerInput}
+            value={name}
+          />
+          <TextInput
+            accessibilityLabel="Apartment number"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            keyboardAppearance="dark"
+            onChangeText={setApartment}
+            placeholder="Apartment (for example, 12A)"
+            placeholderTextColor="#8E8A84"
+            returnKeyType="next"
+            style={styles.profileInput}
+            value={apartment}
+          />
+          <TextInput
+            accessibilityLabel="Short profile introduction"
+            autoCapitalize="sentences"
+            keyboardAppearance="dark"
+            onChangeText={setBio}
+            placeholder="A little about you (optional)"
+            placeholderTextColor="#8E8A84"
+            returnKeyType="done"
+            style={styles.profileInput}
+            value={bio}
+          />
+          {error ? (
+            <Text accessibilityRole="alert" style={styles.pickerError}>
+              {error}
+            </Text>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSave }}
+            disabled={!canSave}
+            onPress={() =>
+              onSave({
+                name: name.trim(),
+                apartment: apartment.trim(),
+                bio: bio.trim() || "A neighbor in this building.",
+              })
+            }
+            style={({ pressed }) => [
+              styles.enterBuildingButton,
+              !canSave && styles.enterBuildingButtonDisabled,
+              pressed && canSave && styles.buttonPressed,
+            ]}
           >
             <Text style={styles.enterBuildingText}>
-              {saving ? "Saving…" : "Enter Building"}
+              {saving ? "Saving…" : "Save Window"}
             </Text>
-            <Text style={styles.enterBuildingArrow}>→</Text>
+          </Pressable>
+            </>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            disabled={saving}
+            onPress={onDismiss}
+            style={styles.profileDismiss}
+          >
+            <Text style={styles.profileDismissText}>
+              {userCard ? "Close" : "Not now"}
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -858,20 +1119,53 @@ function BuildingPicker({
   );
 }
 
+function TabIcon({ name, color }) {
+  if (name === "home") {
+    return (
+      <View style={[styles.towerIcon, { borderColor: color }]}>
+        <View style={[styles.towerAntenna, { backgroundColor: color }]} />
+        <View style={styles.towerWindows}>
+          {Array.from({ length: 6 }, (_, index) => (
+            <View
+              key={index}
+              style={[styles.towerPane, { backgroundColor: color }]}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+  if (name === "connect") {
+    return (
+      <View style={styles.connectIcon}>
+        <View style={[styles.connectOrb, { borderColor: color }]} />
+        <View style={[styles.connectOrb, styles.connectOrbOverlap, { borderColor: color }]} />
+      </View>
+    );
+  }
+  return (
+    <View style={[styles.noteIcon, { borderColor: color }]}>
+      <View style={[styles.noteIconLine, { backgroundColor: color }]} />
+      <View style={[styles.noteIconLine, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
 function BottomNavigation({ activeTab, onSelect, bottomInset }) {
   const tabs = [
-    { key: "home", label: "Home", icon: "⌂" },
-    { key: "connect", label: "Connect", icon: "◉" },
-    { key: "contribute", label: "Contribute", icon: "☁" },
+    { key: "home", label: "Home" },
+    { key: "connect", label: "Connect" },
+    { key: "contribute", label: "Contribute" },
   ];
 
   return (
     <View
       accessibilityRole="tablist"
-      style={[styles.bottomNavigation, { paddingBottom: Math.max(bottomInset, 9) }]}
+      style={[styles.bottomNavigation, { paddingBottom: Math.max(bottomInset, 10) }]}
     >
       {tabs.map((tab) => {
         const selected = activeTab === tab.key;
+        const color = selected ? "#F0C27A" : "#8A8680";
         return (
           <Pressable
             key={tab.key}
@@ -880,28 +1174,16 @@ function BottomNavigation({ activeTab, onSelect, bottomInset }) {
             onPress={() => onSelect(tab.key)}
             style={styles.navigationTab}
           >
+            <TabIcon name={tab.key} color={color} />
+            <Text style={[styles.navigationLabel, selected && styles.navigationLabelActive]}>
+              {tab.label}
+            </Text>
             <View
               style={[
                 styles.navigationIndicator,
                 selected && styles.navigationIndicatorActive,
               ]}
             />
-            <Text
-              style={[
-                styles.navigationIcon,
-                selected && styles.navigationIconActive,
-              ]}
-            >
-              {tab.icon}
-            </Text>
-            <Text
-              style={[
-                styles.navigationLabel,
-                selected && styles.navigationLabelActive,
-              ]}
-            >
-              {tab.label}
-            </Text>
           </Pressable>
         );
       })}
@@ -911,36 +1193,81 @@ function BottomNavigation({ activeTab, onSelect, bottomInset }) {
 
 function CloudBlockApp() {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const wide = width >= 760 && width > height * 0.9;
+  const stageWidth = Math.min(430, Math.max(340, Math.round(height * 0.48)));
   const [activeTab, setActiveTab] = useState("home");
   const [building, setBuilding] = useState(null);
   const [targetTab, setTargetTab] = useState("home");
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [userCard, setUserCard] = useState(null);
+  const [cardEditorVisible, setCardEditorVisible] = useState(false);
+  const [buildingJoined, setBuildingJoined] = useState(false);
+  const [windowAdded, setWindowAdded] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const [storageReady, setStorageReady] = useState(false);
   const [savingBuilding, setSavingBuilding] = useState(false);
+  const [savingUserCard, setSavingUserCard] = useState(false);
   const [storageError, setStorageError] = useState("");
+  const [userCardError, setUserCardError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    let mediaQuery;
+    let subscription;
+    const updatePreference = (value) => {
+      if (active) setReducedMotion(Boolean(value));
+    };
+
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      updatePreference(mediaQuery.matches);
+      const handleChange = (event) => updatePreference(event.matches);
+      mediaQuery.addEventListener?.("change", handleChange);
+      return () => {
+        active = false;
+        mediaQuery.removeEventListener?.("change", handleChange);
+      };
+    }
+
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(updatePreference)
+      .catch((error) =>
+        console.warn("Could not read the reduced-motion preference.", error),
+      );
+    subscription = AccessibilityInfo.addEventListener(
+      "reduceMotionChanged",
+      updatePreference,
+    );
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
 
     async function restoreBuilding() {
+      let restoredBuilding = null;
       try {
         const saved = await AsyncStorage.getItem(BUILDING_STORAGE_KEY);
         if (!active) return;
         if (saved === null) {
           setPickerVisible(true);
-          return;
+        } else {
+          const value = JSON.parse(saved);
+          if (
+            !value ||
+            typeof value.id !== "string" ||
+            typeof value.name !== "string" ||
+            typeof value.address !== "string"
+          ) {
+            throw new Error("Saved building data is invalid.");
+          }
+          restoredBuilding = value;
+          setBuilding(value);
         }
-
-        const value = JSON.parse(saved);
-        if (
-          !value ||
-          typeof value.id !== "string" ||
-          typeof value.name !== "string" ||
-          typeof value.address !== "string"
-        ) {
-          throw new Error("Saved building data is invalid.");
-        }
-        setBuilding(value);
       } catch (error) {
         console.error("Could not restore the selected building.", error);
         if (active) {
@@ -949,6 +1276,35 @@ function CloudBlockApp() {
           setStorageError(
             "We couldn't load the saved building. Choose it again to continue.",
           );
+        }
+      }
+
+      if (!active) return;
+      try {
+        const savedCard = await AsyncStorage.getItem(USER_CARD_STORAGE_KEY);
+        if (!active) return;
+        if (savedCard !== null) {
+          const card = JSON.parse(savedCard);
+          if (
+            !card ||
+            typeof card.name !== "string" ||
+            typeof card.apartment !== "string" ||
+            typeof card.bio !== "string" ||
+            typeof card.privacyMode !== "boolean"
+          ) {
+            throw new Error("Saved user card data is invalid.");
+          }
+          setUserCard(card);
+        } else if (restoredBuilding) {
+          setCardEditorVisible(true);
+        }
+      } catch (error) {
+        console.error("Could not restore the user card.", error);
+        if (active) {
+          setUserCardError(
+            "We couldn't load your saved window. You can create it again.",
+          );
+          if (restoredBuilding) setCardEditorVisible(true);
         }
       } finally {
         if (active) setStorageReady(true);
@@ -971,8 +1327,20 @@ function CloudBlockApp() {
   }
 
   function openBuildingPicker() {
-    setTargetTab(activeTab);
+    setTargetTab("home");
+    setBuildingJoined(false);
     setPickerVisible(true);
+  }
+
+  function openUserCardEditor() {
+    setUserCardError("");
+    setWindowAdded(false);
+    if (!building) {
+      setTargetTab("home");
+      setPickerVisible(true);
+      return;
+    }
+    setCardEditorVisible(true);
   }
 
   async function enterBuilding(selection) {
@@ -986,7 +1354,14 @@ function CloudBlockApp() {
       );
       setBuilding(selection);
       setActiveTab(targetTab);
-      setPickerVisible(false);
+      setBuildingJoined(true);
+      setTimeout(() => {
+        setPickerVisible(false);
+        if (!userCard) {
+          setUserCardError("");
+          setCardEditorVisible(true);
+        }
+      }, 1200);
     } catch (error) {
       console.error("Could not save the selected building.", error);
       setStorageError(
@@ -997,7 +1372,49 @@ function CloudBlockApp() {
     }
   }
 
-  const isHome = activeTab === "home";
+  async function saveUserCard(card) {
+    if (savingUserCard) return;
+    setSavingUserCard(true);
+    setUserCardError("");
+    const savedCard = { ...card, privacyMode: userCard?.privacyMode || false };
+    try {
+      await AsyncStorage.setItem(
+        USER_CARD_STORAGE_KEY,
+        JSON.stringify(savedCard),
+      );
+      setUserCard(savedCard);
+      setWindowAdded(true);
+      setTimeout(() => {
+        setCardEditorVisible(false);
+        setWindowAdded(false);
+      }, 1200);
+    } catch (error) {
+      console.error("Could not save the user card.", error);
+      setUserCardError(
+        "We couldn't save your window. Check device storage and try again.",
+      );
+    } finally {
+      setSavingUserCard(false);
+    }
+  }
+
+  async function toggleUserPrivacy() {
+    if (!userCard) return;
+    const nextCard = { ...userCard, privacyMode: !userCard.privacyMode };
+    setUserCardError("");
+    try {
+      await AsyncStorage.setItem(
+        USER_CARD_STORAGE_KEY,
+        JSON.stringify(nextCard),
+      );
+      setUserCard(nextCard);
+    } catch (error) {
+      console.error("Could not update user privacy mode.", error);
+      setUserCardError(
+        "We couldn't update privacy mode. Check device storage and try again.",
+      );
+    }
+  }
 
   return (
     <View style={styles.app}>
@@ -1006,59 +1423,84 @@ function CloudBlockApp() {
         backgroundColor="transparent"
         translucent={Platform.OS === "android"}
       />
-      {isHome ? (
-        <ImageBackground
-          pointerEvents="none"
-          source={require("./assets/images/skyscraper.png")}
-          resizeMode="cover"
-          style={styles.fullScreenBackground}
-        />
-      ) : (
-        <View pointerEvents="none" style={styles.nonHomeBackground} />
-      )}
-      {isHome ? (
-        <View pointerEvents="none" style={styles.backgroundOverlay} />
-      ) : null}
+      <View style={[styles.stage, wide && { width: stageWidth }, wide && styles.stageWide]}>
+        <View style={styles.backdrop}>
+          {activeTab !== "home" ? (
+            <Fill image={SCREEN_VEIL} style={StyleSheet.absoluteFill} />
+          ) : null}
+        </View>
 
-      <SafeAreaView
-        edges={["top", "left", "right"]}
-        style={styles.safeArea}
-      >
-        <View style={styles.appContent}>
-          <View style={styles.tabContent}>
-            {isHome || !building ? (
-              <HomeScreen
-                building={building}
-                onChangeBuilding={openBuildingPicker}
-              />
-            ) : activeTab === "connect" ? (
-              <ConnectScreen building={building} />
-            ) : (
-              <ContributeScreen building={building} />
-            )}
+        <SafeAreaView edges={["top", "left", "right"]} style={styles.safeArea}>
+          <View style={styles.appContent}>
+            <View style={styles.tabContent}>
+              <View
+                accessibilityElementsHidden={activeTab !== "home"}
+                importantForAccessibility={
+                  activeTab === "home" ? "auto" : "no-hide-descendants"
+                }
+                pointerEvents={activeTab === "home" ? "auto" : "none"}
+                style={[styles.layer, activeTab !== "home" && styles.layerOff]}
+              >
+                <HomeScreen
+                  active={
+                    activeTab === "home" &&
+                    !pickerVisible &&
+                    !cardEditorVisible
+                  }
+                  userCard={userCard}
+                  onFindBuilding={openBuildingPicker}
+                  onOpenUserCard={openUserCardEditor}
+                />
+              </View>
+              {activeTab === "connect" && building ? (
+                <View style={styles.layer}>
+                  <ConnectScreen
+                    building={building}
+                    userCard={userCard}
+                    onTogglePrivacy={toggleUserPrivacy}
+                    privacyError={userCardError}
+                  />
+                </View>
+              ) : null}
+              {activeTab === "contribute" && building ? (
+                <View style={styles.layer}>
+                  <ContributeScreen
+                    building={building}
+                    reducedMotion={reducedMotion}
+                  />
+                </View>
+              ) : null}
+            </View>
+            <BottomNavigation
+              activeTab={activeTab}
+              onSelect={selectTab}
+              bottomInset={insets.bottom}
+            />
           </View>
-          <BottomNavigation
-            activeTab={activeTab}
-            onSelect={selectTab}
-            bottomInset={insets.bottom}
-          />
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
 
-      {!storageReady ? (
-        <View style={styles.loadingOverlay}>
-          <Text style={styles.loadingBrand}>CLOUDBLOCK</Text>
-          <Text style={styles.loadingMessage}>Finding your place…</Text>
-        </View>
-      ) : null}
-      <BuildingPicker
-        visible={storageReady && pickerVisible}
-        currentBuilding={building}
-        error={storageError}
-        saving={savingBuilding}
-        onCancel={() => setPickerVisible(false)}
-        onEnter={enterBuilding}
-      />
+        {!storageReady ? (
+          <View style={styles.loadingOverlay}>
+            <Text style={styles.loadingBrand}>CLOUDBLOCK</Text>
+          </View>
+        ) : null}
+        <BuildingPicker
+          visible={storageReady && pickerVisible}
+          error={storageError}
+          saving={savingBuilding}
+          joined={buildingJoined}
+          onEnter={enterBuilding}
+        />
+        <UserCardEditor
+          visible={storageReady && cardEditorVisible}
+          userCard={userCard}
+          saving={savingUserCard}
+          error={userCardError}
+          windowAdded={windowAdded}
+          onSave={saveUserCard}
+          onDismiss={() => setCardEditorVisible(false)}
+        />
+      </View>
     </View>
   );
 }
@@ -1074,18 +1516,24 @@ export default function App() {
 const styles = StyleSheet.create({
   app: {
     flex: 1,
-    backgroundColor: "#080B10",
+    alignItems: "center",
+    backgroundColor: "#05070A",
   },
-  fullScreenBackground: {
-    ...StyleSheet.absoluteFillObject,
+  stage: {
+    flex: 1,
+    width: "100%",
+    overflow: "hidden",
+    backgroundColor: "#05070A",
   },
-  nonHomeBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#090D13",
+  stageWide: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "rgba(246, 241, 232, 0.08)",
   },
-  backgroundOverlay: {
+  backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(4, 7, 12, 0.28)",
+    overflow: "hidden",
+    backgroundColor: "#05070A",
   },
   safeArea: {
     flex: 1,
@@ -1093,298 +1541,168 @@ const styles = StyleSheet.create({
   },
   appContent: {
     flex: 1,
-    backgroundColor: "transparent",
   },
   tabContent: {
     flex: 1,
   },
+  layer: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  layerOff: {
+    opacity: 0,
+  },
   screen: {
     flex: 1,
-    overflow: "hidden",
     backgroundColor: "transparent",
   },
-  homeContent: {
-    flex: 1,
-  },
-  topBar: {
-    minHeight: 66,
-    paddingHorizontal: 22,
-    paddingTop: 9,
-    paddingBottom: 8,
+  homeActions: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    bottom: 24,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
   },
-  brand: {
-    color: "#FFF9EF",
-    fontSize: 22,
-    fontWeight: "900",
-    letterSpacing: 3,
-    textShadowColor: "rgba(0, 0, 0, 0.7)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
-  },
-  brandCaption: {
-    marginTop: 4,
-    color: "#D1D0CD",
-    fontSize: 11,
-  },
-  signInButton: {
+  homeActionButton: {
+    minHeight: 46,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.24)",
-    backgroundColor: "rgba(13, 17, 22, 0.62)",
-  },
-  signInText: {
-    color: "#F2C174",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  homeScroll: {
-    flexGrow: 1,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 28,
-    alignItems: "center",
-  },
-  homeHero: {
-    width: "100%",
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: 999,
   },
-  homeBuildingLabel: {
-    maxWidth: "92%",
-    minHeight: 31,
-    marginBottom: 22,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 16,
+  homeActionPrimary: {
+    flex: 1,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.14)",
-    backgroundColor: "rgba(9, 13, 18, 0.52)",
+    borderColor: "rgba(255, 239, 218, 0.62)",
+    backgroundColor: "rgba(236, 199, 148, 0.92)",
   },
-  buildingPin: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#F2B864",
+  homeActionPrimaryText: {
+    color: "#1C140C",
+    fontSize: 14,
+    fontWeight: "600",
   },
-  homeBuildingName: {
-    color: "#D8D6D1",
-    fontSize: 11,
-    letterSpacing: 0.3,
+  homeActionSecondary: {
+    borderWidth: 1,
+    borderColor: "rgba(246, 241, 232, 0.28)",
+    backgroundColor: "rgba(12, 14, 18, 0.66)",
   },
-  introCopy: {
-    width: "100%",
-    marginBottom: 25,
-    alignItems: "center",
-  },
-  eyebrow: {
-    color: "#EDB66A",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.8,
-    textAlign: "center",
-  },
-  headline: {
-    marginTop: 8,
-    color: "#FFF8EE",
-    fontSize: 32,
-    fontWeight: "900",
-    letterSpacing: -1,
-    textShadowColor: "rgba(0, 0, 0, 0.7)",
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 8,
-  },
-  subheadline: {
-    maxWidth: 290,
-    marginTop: 7,
-    color: "#D2D1CE",
+  homeActionSecondaryText: {
+    color: "#F6F1E8",
     fontSize: 13,
-    lineHeight: 19,
-    textAlign: "center",
-    textShadowColor: "rgba(0, 0, 0, 0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  introLayer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  cloudPuff: {
-    position: "absolute",
-    width: 96,
-    height: 48,
-    shadowColor: "#FFFFFF",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.75,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  cloudTopLeft: {
-    top: "16%",
-    left: "7%",
-  },
-  cloudTopRight: {
-    top: "20%",
-    right: "5%",
-  },
-  cloudMidLeft: {
-    top: "43%",
-    left: "1%",
-  },
-  cloudMidRight: {
-    top: "48%",
-    right: "1%",
-  },
-  cloudBottom: {
-    bottom: "18%",
-    left: "34%",
-  },
-  cloudPuffBase: {
-    position: "absolute",
-    left: 10,
-    right: 8,
-    bottom: 3,
-    height: 25,
-    borderRadius: 15,
-    backgroundColor: "rgba(190, 199, 207, 0.47)",
-  },
-  cloudPuffLeft: {
-    position: "absolute",
-    left: 15,
-    bottom: 10,
-    width: 29,
-    height: 29,
-    borderRadius: 16,
-    backgroundColor: "rgba(206, 214, 221, 0.55)",
-  },
-  cloudPuffCenter: {
-    position: "absolute",
-    left: 34,
-    bottom: 13,
-    width: 38,
-    height: 38,
-    borderRadius: 20,
-    backgroundColor: "rgba(206, 214, 221, 0.60)",
-  },
-  cloudPuffRight: {
-    position: "absolute",
-    right: 12,
-    bottom: 8,
-    width: 27,
-    height: 27,
-    borderRadius: 15,
-    backgroundColor: "rgba(190, 199, 207, 0.50)",
-  },
-  cloudMark: {
-    zIndex: 1,
-    paddingHorizontal: 31,
-    paddingVertical: 23,
-    borderRadius: 40,
-    backgroundColor: "rgba(11, 15, 20, 0.87)",
-    borderWidth: 1,
-    borderColor: "rgba(242, 182, 92, 0.40)",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    elevation: 12,
-  },
-  cloudMarkText: {
-    color: "#FFF4E4",
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -1.5,
-    textShadowColor: "rgba(238, 167, 73, 0.6)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    fontWeight: "500",
   },
   pageHeader: {
-    minHeight: 70,
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 24,
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  pageKicker: {
+    color: "#E8B56A",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 2.4,
+  },
+  pageHeaderRow: {
+    marginTop: 6,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "baseline",
     justifyContent: "space-between",
   },
-  pageHeaderMark: {
-    width: 36,
-    height: 36,
+  cloudPageTitle: {
+    position: "relative",
+    minWidth: 118,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 13,
-    backgroundColor: "rgba(243, 181, 91, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(243, 181, 91, 0.35)",
   },
-  pageHeaderMarkText: {
-    color: "#E9B56B",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.8,
+  pageTitlePuff: {
+    position: "absolute",
+    backgroundColor: "#F5F8FA",
+    borderRadius: 999,
   },
-  pageTitle: {
-    color: "#F5F1EB",
-    fontSize: 23,
-    fontWeight: "900",
+  pageTitlePuffLeft: {
+    left: 4,
+    bottom: 4,
+    width: 35,
+    height: 28,
   },
-  pageBuildingName: {
-    maxWidth: 280,
-    marginTop: 3,
-    color: "#A6A39E",
-    fontSize: 11,
+  pageTitlePuffCenter: {
+    left: 28,
+    bottom: 8,
+    width: 48,
+    height: 36,
   },
-  connectContent: {
-    paddingHorizontal: 18,
-    paddingBottom: 28,
+  pageTitlePuffRight: {
+    right: 4,
+    bottom: 4,
+    width: 36,
+    height: 28,
   },
-  communityIntro: {
-    marginTop: 8,
-    marginBottom: 22,
-    alignItems: "center",
-  },
-  communityTitle: {
-    marginTop: 7,
-    color: "#F3EEE6",
-    fontSize: 27,
-    fontWeight: "900",
+  cloudPageTitleText: {
+    zIndex: 1,
+    color: "#283743",
+    fontSize: 17,
+    fontWeight: "700",
     letterSpacing: -0.5,
     textAlign: "center",
   },
-  communityDescription: {
-    maxWidth: 300,
-    marginTop: 7,
-    color: "#A9A7A2",
-    fontSize: 13,
-    lineHeight: 19,
-    textAlign: "center",
+  pageTitle: {
+    color: "#F6F1E8",
+    fontFamily: SERIF,
+    fontSize: 36,
+    fontWeight: "400",
   },
-  neighborCount: {
-    marginTop: 13,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 13,
-    backgroundColor: "rgba(243, 181, 91, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(243, 181, 91, 0.2)",
+  pageMark: {
+    color: "rgba(232, 181, 106, 0.8)",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 1.4,
   },
-  neighborCountText: {
-    color: "#E5BC7F",
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.5,
+  pageBuilding: {
+    marginTop: 4,
+    color: "#A7A29A",
+    fontSize: 12,
+  },
+  connectContent: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 28,
+  },
+  matesSummary: {
+    minHeight: 50,
+    marginBottom: 18,
+    paddingHorizontal: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  matesKicker: {
+    color: "#B9C9D3",
+    fontSize: 9,
+    fontWeight: "600",
+    letterSpacing: 1.8,
+  },
+  matesSummaryLabel: {
+    marginTop: 4,
+    color: "#8F999F",
+    fontSize: 11,
+  },
+  matesCount: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 5,
+  },
+  matesCountNumber: {
+    color: "#F0C27A",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  matesMeta: {
+    color: "#9C978F",
+    fontSize: 11,
+    letterSpacing: 0.4,
   },
   floorSection: {
     marginBottom: 22,
@@ -1393,671 +1711,736 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: 10,
   },
-  floorPill: {
-    width: 31,
-    height: 31,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 11,
-    backgroundColor: "rgba(232, 175, 91, 0.16)",
-    borderWidth: 1,
-    borderColor: "rgba(232, 175, 91, 0.34)",
+  floorIndex: {
+    color: "#F0C27A",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 1.4,
   },
-  floorPillText: {
-    color: "#F0C27B",
-    fontSize: 10,
-    fontWeight: "900",
-  },
-  floorHeadingTitle: {
+  floorRule: {
     flex: 1,
-    color: "#ECE8E2",
-    fontSize: 15,
-    fontWeight: "800",
+    height: 1,
+    backgroundColor: "rgba(246, 241, 232, 0.14)",
   },
-  floorHeadingCount: {
-    color: "#888985",
-    fontSize: 10,
+  floorCount: {
+    color: "#8E8A84",
+    fontSize: 11,
   },
   neighborCarousel: {
-    paddingRight: 10,
+    paddingRight: 8,
   },
   neighborCard: {
-    width: 270,
-    minHeight: 354,
+    width: 262,
     marginRight: 14,
-    padding: 16,
-    overflow: "hidden",
-    alignItems: "center",
-    borderRadius: 24,
+    padding: 14,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(234, 224, 206, 0.16)",
-    backgroundColor: "rgba(24, 27, 31, 0.92)",
+    borderColor: "rgba(246, 241, 232, 0.12)",
+    backgroundColor: "rgba(10, 12, 16, 0.78)",
   },
-  neighborCardTop: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  neighborCardSelected: {
+    borderColor: "rgba(240, 194, 122, 0.68)",
   },
-  apartmentBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: "rgba(231, 173, 90, 0.12)",
-  },
-  apartmentBadgeText: {
-    color: "#E7B76F",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-  },
-  neighborSparkle: {
-    color: "#DBAD6C",
-    fontSize: 17,
-  },
-  neighborPortrait: {
-    width: 102,
-    height: 102,
-    marginTop: 14,
-    marginBottom: 12,
+  windowFrame: {
+    height: 168,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "flex-end",
-    borderRadius: 33,
-    backgroundColor: "#303841",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(232, 181, 106, 0.38)",
+    backgroundColor: "#14110E",
   },
-  personBody: {
-    width: 82,
-    height: 47,
-    marginBottom: -1,
+  windowLight: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(235, 192, 132, 0.08)",
+  },
+  blindPanel: {
+    width: "100%",
+    height: 168,
+    paddingTop: 4,
     alignItems: "center",
-    borderTopLeftRadius: 35,
-    borderTopRightRadius: 35,
+    justifyContent: "space-around",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(244, 224, 193, 0.28)",
+    backgroundColor: "rgba(21, 24, 28, 0.94)",
   },
-  personNeck: {
-    position: "absolute",
-    top: -9,
-    width: 22,
-    height: 22,
-    borderRadius: 9,
-    backgroundColor: "#C88462",
+  blindSlat: {
+    width: "100%",
+    height: 7,
+    borderRadius: 2,
+    backgroundColor: "rgba(192, 180, 160, 0.82)",
+    shadowColor: "#EBC994",
+    shadowOpacity: 0.16,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  personHead: {
+  windowUnit: {
     position: "absolute",
-    top: -46,
-    width: 55,
-    height: 58,
+    top: 10,
+    left: 12,
+    color: "#F0C27A",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 1.1,
+  },
+  privateBadge: {
+    position: "absolute",
+    top: 9,
+    right: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+    overflow: "hidden",
+    borderRadius: 999,
+    backgroundColor: "rgba(13, 17, 22, 0.72)",
+    color: "#D7E0E6",
+    fontSize: 8,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  cloudAvatar: {
+    width: 114,
+    height: 90,
+    marginBottom: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  avatarPuff: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "#F5F8FA",
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 0.3,
+    shadowRadius: 7,
+    elevation: 3,
+  },
+  avatarPuffLeft: {
+    left: 10,
+    bottom: 8,
+    width: 48,
+    height: 48,
+  },
+  avatarPuffCenter: {
+    left: 34,
+    bottom: 20,
+    width: 50,
+    height: 56,
+  },
+  avatarPuffRight: {
+    right: 8,
+    bottom: 8,
+    width: 48,
+    height: 48,
+  },
+  avatarFace: {
+    position: "absolute",
+    bottom: 19,
+    width: 40,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 29,
-    shadowColor: "#000000",
-    shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 5,
-    elevation: 4,
   },
-  personHighlight: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    width: 15,
-    height: 8,
-    borderRadius: 6,
-    backgroundColor: "rgba(255, 239, 218, 0.22)",
-    transform: [{ rotate: "-30deg" }],
-  },
-  personEyes: {
-    width: 26,
-    marginTop: 8,
+  avatarEyes: {
+    width: 20,
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  personEye: {
+  avatarEye: {
     width: 3,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#33251F",
+    backgroundColor: "#45545F",
   },
-  personSmile: {
-    width: 10,
+  avatarSmile: {
+    width: 9,
     height: 5,
-    marginTop: 5,
+    marginTop: 4,
     borderBottomWidth: 1.5,
-    borderColor: "#58392D",
+    borderColor: "#45545F",
     borderBottomLeftRadius: 8,
     borderBottomRightRadius: 8,
   },
-  portraitShine: {
-    position: "absolute",
-    top: 10,
-    right: 12,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-  },
   neighborName: {
-    color: "#F4EEE5",
-    fontSize: 17,
-    fontWeight: "900",
+    marginTop: 14,
+    color: "#F6F1E8",
+    fontFamily: SERIF,
+    fontSize: 22,
+    fontWeight: "400",
   },
   neighborBio: {
     minHeight: 36,
     marginTop: 6,
-    color: "#B7B2A9",
-    fontSize: 12,
-    lineHeight: 17,
-    textAlign: "center",
+    color: "#C5C0B7",
+    fontSize: 13,
+    lineHeight: 18,
   },
-  hobbyRow: {
-    marginTop: 11,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 6,
-  },
-  hobbyTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 10,
-    backgroundColor: "rgba(202, 209, 214, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(202, 209, 214, 0.12)",
-  },
-  hobbyText: {
-    color: "#CAC5BC",
-    fontSize: 9,
-    fontWeight: "700",
-  },
-  sayHelloButton: {
-    width: "100%",
-    minHeight: 39,
-    marginTop: "auto",
-    paddingHorizontal: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 13,
-    backgroundColor: "rgba(229, 174, 95, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(229, 174, 95, 0.23)",
-  },
-  sayHelloText: {
-    color: "#E9BD7D",
+  neighborHobbies: {
+    marginTop: 10,
+    color: "#A39E96",
     fontSize: 11,
-    fontWeight: "800",
+    letterSpacing: 0.2,
   },
-  sayHelloArrow: {
-    color: "#E9BD7D",
-    fontSize: 14,
+  privateProfileText: {
+    color: "#D8E0E5",
+    letterSpacing: 1,
   },
-  emptyCommunity: {
-    marginTop: 18,
-    padding: 25,
+  helloButton: {
+    marginTop: 14,
+    paddingVertical: 10,
     alignItems: "center",
-    borderRadius: 22,
+    borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.13)",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderColor: "rgba(232, 181, 106, 0.4)",
   },
-  emptyCommunityIcon: {
-    color: "#E4B66F",
-    fontSize: 23,
+  helloButtonSent: {
+    backgroundColor: "rgba(232, 181, 106, 0.16)",
   },
-  emptyCommunityTitle: {
+  helloText: {
+    color: "#E8B56A",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  helloTextSent: {
+    color: "#F6F1E8",
+  },
+  emptyPanel: {
     marginTop: 8,
-    color: "#EFEAE2",
-    fontSize: 17,
-    fontWeight: "800",
+    paddingHorizontal: 18,
+    paddingVertical: 28,
+    alignItems: "center",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(246, 241, 232, 0.1)",
+    backgroundColor: "rgba(8, 10, 14, 0.55)",
   },
-  emptyCommunityText: {
-    marginTop: 6,
-    color: "#A6A39D",
-    fontSize: 12,
+  emptyTitle: {
+    color: "#F6F1E8",
+    fontFamily: SERIF,
+    fontSize: 22,
+    fontWeight: "400",
+  },
+  emptyText: {
+    maxWidth: 260,
+    marginTop: 8,
+    color: "#A7A29A",
+    fontSize: 13,
+    lineHeight: 19,
     textAlign: "center",
   },
-  boardIntro: {
-    paddingHorizontal: 22,
-    paddingTop: 8,
-    paddingBottom: 17,
-    alignItems: "center",
+  boardLead: {
+    paddingHorizontal: 24,
+    paddingBottom: 14,
+    color: "#B7B2AA",
+    fontSize: 14,
+    lineHeight: 20,
   },
   boardTabs: {
-    marginHorizontal: 22,
+    marginHorizontal: 24,
     marginBottom: 8,
-    padding: 4,
     flexDirection: "row",
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
-    backgroundColor: "rgba(255, 255, 255, 0.045)",
+    gap: 8,
   },
   boardTab: {
     flex: 1,
-    minHeight: 39,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 11,
+    justifyContent: "space-between",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(246, 241, 232, 0.1)",
+    backgroundColor: "rgba(8, 10, 14, 0.45)",
   },
   boardTabSelected: {
-    backgroundColor: "rgba(236, 177, 91, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(236, 177, 91, 0.27)",
+    borderColor: "rgba(232, 181, 106, 0.55)",
+    backgroundColor: "rgba(232, 181, 106, 0.12)",
   },
   boardTabText: {
-    color: "#9E9B95",
+    color: "#9C978F",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  boardTabCount: {
+    color: "#8E8A84",
     fontSize: 12,
-    fontWeight: "700",
   },
   boardTabTextSelected: {
-    color: "#E9BC78",
+    color: "#F0C27A",
   },
-  cloudBoard: {
-    paddingHorizontal: 17,
-    paddingTop: 12,
+  boardScroll: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    gap: 16,
+  },
+  noteFloat: {
+    overflow: "visible",
+  },
+  noteSurface: {
+    position: "relative",
+    width: "100%",
+    minHeight: 166,
+    paddingHorizontal: 24,
+    paddingTop: 46,
     paddingBottom: 20,
+    overflow: "visible",
+    backgroundColor: "transparent",
+  },
+  noteOverlay: {
+    zIndex: 1,
+  },
+  noteDescription: {
+    marginTop: 5,
+    paddingRight: 12,
+    color: "#52616A",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  noteCloud: {
+    position: "absolute",
+    top: 20,
+    right: 8,
+    bottom: 0,
+    left: 8,
+    borderRadius: 40,
+    borderWidth: 1,
+    shadowColor: "#15212A",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 7,
+  },
+  noteCloudRequest: {
+    borderColor: "#FFFFFF",
+    backgroundColor: "#F6F8FA",
+  },
+  noteCloudOffer: {
+    borderColor: "#FFFFFF",
+    backgroundColor: "#F1F6F9",
+  },
+  noteContent: {
+    zIndex: 1,
+    paddingBottom: 1,
+  },
+  notePressable: {
+    zIndex: 1,
+  },
+  cloudPuff: {
+    position: "absolute",
+    borderRadius: 999,
+    backgroundColor: "#F8FAFC",
+  },
+  cloudPuffLeft: {
+    top: -9,
+    left: "12%",
+    width: 62,
+    height: 40,
+  },
+  cloudPuffCenter: {
+    top: -20,
+    left: "37%",
+    width: 76,
+    height: 52,
+  },
+  cloudPuffRight: {
+    top: -8,
+    right: "10%",
+    width: 58,
+    height: 40,
+  },
+  noteDetails: {
+    zIndex: 1,
+    marginTop: 10,
+    paddingTop: 10,
+    paddingHorizontal: 2,
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(66, 83, 96, 0.14)",
+  },
+  noteDetailsText: {
+    flex: 1,
+    paddingRight: 8,
+    color: "#5D6A73",
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  noteSaveButton: {
+    minWidth: 54,
+    minHeight: 30,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    gap: 11,
+    borderRadius: 999,
+    backgroundColor: "rgba(48, 68, 82, 0.1)",
   },
-  cloudPost: {
-    minHeight: 118,
-    paddingHorizontal: 17,
-    paddingVertical: 16,
-    overflow: "hidden",
-    justifyContent: "center",
-    borderRadius: 32,
-    borderWidth: 1,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 3,
+  noteSaveText: {
+    color: "#3D505D",
+    fontSize: 11,
+    fontWeight: "600",
   },
-  cloudPost_request: {
-    backgroundColor: "rgba(90, 66, 45, 0.92)",
-    borderColor: "rgba(245, 186, 105, 0.45)",
+  noteMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  cloudPost_offer: {
-    backgroundColor: "rgba(38, 51, 57, 0.94)",
-    borderColor: "rgba(166, 190, 188, 0.36)",
+  noteTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  cloudPost_urgent: {
-    width: "92%",
-    minHeight: 145,
-  },
-  cloudPost_normal: {
-    width: "75%",
-    minHeight: 125,
-  },
-  cloudPost_casual: {
-    width: "62%",
-    minHeight: 110,
-  },
-  postCloudPuffLeft: {
-    position: "absolute",
-    top: -17,
-    left: 17,
-    width: 53,
-    height: 42,
-    borderRadius: 28,
-    backgroundColor: "rgba(255, 239, 216, 0.07)",
-  },
-  postCloudPuffRight: {
-    position: "absolute",
-    right: 6,
-    bottom: -19,
-    width: 72,
-    height: 47,
-    borderRadius: 32,
-    backgroundColor: "rgba(255, 255, 255, 0.045)",
-  },
-  cloudPostType: {
-    color: "#E6BB7C",
-    fontSize: 8,
-    fontWeight: "900",
-    letterSpacing: 1.2,
-  },
-  cloudPostText: {
-    marginTop: 7,
-    color: "#FFF6E9",
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  cloudPostUnit: {
-    marginTop: 9,
-    color: "#C5B49C",
-    fontSize: 9,
+  noteType: {
+    color: "#967043",
+    fontSize: 10,
     fontWeight: "700",
+    letterSpacing: 1.6,
+  },
+  noteTypeCool: {
+    color: "#5C7484",
+  },
+  noteSaved: {
+    color: "#547B61",
+    fontSize: 8,
+    fontWeight: "600",
+    letterSpacing: 1.1,
+  },
+  noteUnit: {
+    color: "#64727B",
+    fontSize: 10,
+    fontWeight: "600",
     letterSpacing: 0.8,
   },
+  noteText: {
+    marginTop: 10,
+    paddingRight: 12,
+    color: "#263742",
+    fontFamily: SERIF,
+    fontSize: 20,
+    lineHeight: 26,
+    fontWeight: "400",
+  },
   urgentDot: {
-    position: "absolute",
-    top: 15,
-    right: 17,
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#E9A44F",
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#E8B56A",
   },
-  emptyBoard: {
-    flex: 1,
-    minHeight: 220,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyBoardCloud: {
-    color: "#C6A36D",
-    fontSize: 43,
-  },
-  emptyBoardTitle: {
-    marginTop: 8,
-    color: "#ECE7DF",
-    fontSize: 17,
-    fontWeight: "800",
-  },
-  emptyBoardText: {
-    marginTop: 6,
-    color: "#9D9A94",
-    fontSize: 12,
-    textAlign: "center",
-  },
-  boardSearchBar: {
-    minHeight: 50,
-    marginHorizontal: 18,
-    marginTop: 7,
+  searchBar: {
+    minHeight: 48,
+    marginHorizontal: 20,
+    marginTop: 4,
     marginBottom: 12,
-    paddingHorizontal: 15,
+    paddingHorizontal: 14,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 17,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.16)",
-    backgroundColor: "rgba(255, 255, 255, 0.075)",
+    borderColor: "rgba(246, 241, 232, 0.14)",
+    backgroundColor: "rgba(8, 10, 14, 0.72)",
   },
   searchIcon: {
-    marginRight: 10,
-    color: "#E6B76F",
-    fontSize: 25,
+    marginRight: 8,
+    color: "#E8B56A",
+    fontSize: 18,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 10,
-    color: "#F4EEE5",
-    fontSize: 13,
+    color: "#F6F1E8",
+    fontSize: 14,
   },
   clearSearch: {
-    width: 26,
-    height: 26,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
   clearSearchText: {
-    color: "#BDB6AC",
-    fontSize: 21,
+    color: "#C5C0B7",
+    fontSize: 20,
   },
   bottomNavigation: {
-    minHeight: 67,
-    paddingTop: 5,
+    paddingTop: 8,
     paddingHorizontal: 8,
     flexDirection: "row",
     alignItems: "stretch",
     justifyContent: "space-around",
-    backgroundColor: "rgba(7, 9, 12, 0.90)",
+    backgroundColor: "rgba(5, 7, 10, 0.78)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(236, 181, 103, 0.18)",
+    borderTopColor: "rgba(232, 181, 106, 0.2)",
   },
   navigationTab: {
     flex: 1,
+    minHeight: 52,
     alignItems: "center",
     justifyContent: "flex-start",
+    gap: 4,
+  },
+  navigationLabel: {
+    color: "#8A8680",
+    fontSize: 10,
+    fontWeight: "500",
+    letterSpacing: 0.4,
+  },
+  navigationLabelActive: {
+    color: "#F3D7A8",
   },
   navigationIndicator: {
-    width: 24,
+    width: 14,
     height: 2,
-    marginBottom: 5,
     borderRadius: 2,
     backgroundColor: "transparent",
   },
   navigationIndicatorActive: {
-    backgroundColor: "#F0B55F",
-    shadowColor: "#F0B55F",
-    shadowOpacity: 0.9,
-    shadowRadius: 7,
-    elevation: 3,
+    backgroundColor: "#F0C27A",
   },
-  navigationIcon: {
-    color: "#85827D",
-    fontSize: 17,
+  towerIcon: {
+    width: 15,
+    height: 20,
+    padding: 2,
+    borderWidth: 1.2,
+    borderRadius: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  navigationIconActive: {
-    color: "#F0B55F",
+  towerAntenna: {
+    position: "absolute",
+    top: -5,
+    left: 6,
+    width: 1,
+    height: 4,
   },
-  navigationLabel: {
-    marginTop: 2,
-    color: "#99958F",
-    fontSize: 10,
-    fontWeight: "600",
+  towerWindows: {
+    width: 8,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 1,
   },
-  navigationLabelActive: {
-    color: "#F3D09B",
-    fontWeight: "800",
+  towerPane: {
+    width: 3,
+    height: 3,
+    borderRadius: 0.5,
+  },
+  connectIcon: {
+    width: 18,
+    height: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  connectOrb: {
+    position: "absolute",
+    left: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    borderWidth: 1.4,
+  },
+  connectOrbOverlap: {
+    left: 7,
+  },
+  noteIcon: {
+    width: 13,
+    height: 15,
+    paddingHorizontal: 2,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderRadius: 2,
+  },
+  noteIconLine: {
+    height: 1,
+    marginVertical: 1,
+    opacity: 0.9,
   },
   pickerOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 20,
-    justifyContent: "center",
+  },
+  profileOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 21,
   },
   pickerScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(3, 5, 8, 0.78)",
+    backgroundColor: "rgba(5, 7, 10, 0.24)",
   },
   pickerCenter: {
     flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingVertical: 24,
   },
   pickerCard: {
     width: "100%",
-    maxWidth: 440,
+    maxWidth: 420,
     maxHeight: "100%",
     alignSelf: "center",
-    padding: 22,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 18,
     overflow: "hidden",
-    borderRadius: 28,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(242, 197, 131, 0.32)",
-    backgroundColor: "rgba(22, 24, 27, 0.97)",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 18,
-  },
-  pickerTopline: {
-    minHeight: 43,
-    marginBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  pickerIcon: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 14,
-    backgroundColor: "rgba(238, 177, 96, 0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(238, 177, 96, 0.28)",
-  },
-  pickerIconText: {
-    color: "#F2C17A",
-    fontSize: 21,
-    fontWeight: "800",
-  },
-  pickerCancel: {
-    padding: 9,
-  },
-  pickerCancelText: {
-    color: "#C5B7A1",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  pickerEyebrow: {
-    color: "#D8AC6C",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1.4,
+    borderColor: "rgba(232, 181, 106, 0.32)",
+    backgroundColor: "rgba(12, 13, 16, 0.74)",
   },
   pickerTitle: {
-    marginTop: 7,
-    color: "#FFF7EC",
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -0.7,
-  },
-  pickerDescription: {
-    marginTop: 7,
-    marginBottom: 18,
-    color: "#B7B2A9",
-    fontSize: 13,
-    lineHeight: 19,
+    color: "#F7F1E8",
+    fontFamily: SERIF,
+    fontSize: 30,
+    lineHeight: 36,
+    fontWeight: "400",
   },
   pickerInput: {
-    minHeight: 50,
-    marginBottom: 17,
+    minHeight: 48,
+    marginTop: 16,
+    marginBottom: 16,
     paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.17)",
-    backgroundColor: "rgba(255, 255, 255, 0.07)",
-    color: "#FFF6E9",
-    fontSize: 14,
+    borderColor: "rgba(246, 241, 232, 0.14)",
+    backgroundColor: "rgba(246, 241, 232, 0.04)",
+    color: "#F7F1E8",
+    fontSize: 15,
+  },
+  profileSubtitle: {
+    marginTop: 6,
+    color: "#A7A29A",
+    fontSize: 12,
+  },
+  profileInput: {
+    minHeight: 48,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(246, 241, 232, 0.14)",
+    backgroundColor: "rgba(246, 241, 232, 0.04)",
+    color: "#F7F1E8",
+    fontSize: 15,
+  },
+  profileDismiss: {
+    minHeight: 40,
+    marginTop: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileDismissText: {
+    color: "#B7B2AA",
+    fontSize: 13,
   },
   suggestionsLabel: {
     marginBottom: 8,
-    color: "#938F88",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.2,
+    color: "#8E8A84",
+    fontSize: 10,
+    fontWeight: "600",
+    letterSpacing: 1.6,
   },
   suggestionList: {
     flexGrow: 0,
-    minHeight: 50,
-    maxHeight: 180,
+    maxHeight: 188,
   },
   suggestionListContent: {
-    gap: 7,
+    gap: 8,
   },
   buildingSuggestion: {
-    minHeight: 57,
-    paddingHorizontal: 11,
+    minHeight: 56,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.085)",
-    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderColor: "rgba(246, 241, 232, 0.08)",
+    backgroundColor: "rgba(246, 241, 232, 0.03)",
   },
   buildingSuggestionSelected: {
-    borderColor: "rgba(237, 177, 94, 0.56)",
-    backgroundColor: "rgba(220, 159, 78, 0.13)",
-  },
-  suggestionPin: {
-    width: 30,
-    height: 30,
-    marginRight: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 11,
-    backgroundColor: "rgba(242, 183, 103, 0.12)",
-  },
-  suggestionPinCenter: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#E9B365",
+    borderColor: "rgba(232, 181, 106, 0.6)",
+    backgroundColor: "rgba(232, 181, 106, 0.1)",
   },
   suggestionCopy: {
     flex: 1,
   },
   suggestionName: {
-    color: "#F0ECE5",
-    fontSize: 12,
-    fontWeight: "800",
+    color: "#F6F1E8",
+    fontSize: 14,
+    fontWeight: "500",
   },
   suggestionAddress: {
-    marginTop: 3,
+    marginTop: 2,
     color: "#A7A29A",
-    fontSize: 10,
+    fontSize: 12,
   },
   suggestionCheck: {
-    marginHorizontal: 5,
-    color: "#E8B46A",
-    fontSize: 18,
+    marginLeft: 8,
+    color: "#E8B56A",
+    fontSize: 16,
   },
   pickerError: {
     marginTop: 10,
-    color: "#FFAA8F",
+    color: "#E7A090",
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  pickerDisclaimer: {
+    marginTop: 12,
+    color: "#8E8A84",
     fontSize: 11,
     lineHeight: 16,
   },
-  pickerDisclaimer: {
-    marginTop: 13,
-    color: "#918D86",
-    fontSize: 10,
-    lineHeight: 15,
-  },
   enterBuildingButton: {
-    minHeight: 50,
+    minHeight: 48,
     marginTop: 16,
-    paddingHorizontal: 17,
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 15,
-    backgroundColor: "#D89C51",
+    justifyContent: "center",
+    borderRadius: 999,
+    backgroundColor: "#E8B56A",
   },
   enterBuildingButtonDisabled: {
-    backgroundColor: "rgba(216, 156, 81, 0.27)",
+    backgroundColor: "rgba(232, 181, 106, 0.28)",
   },
   enterBuildingText: {
-    color: "#1E1812",
-    fontSize: 13,
-    fontWeight: "900",
-    letterSpacing: 0.3,
+    color: "#1C140C",
+    fontSize: 15,
+    fontWeight: "600",
   },
-  enterBuildingArrow: {
-    color: "#1E1812",
-    fontSize: 19,
-    fontWeight: "700",
+  buttonPressed: {
+    opacity: 0.84,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 10,
+    backgroundColor: "rgba(5, 7, 10, 0.18)",
+  },
+  successState: {
+    minHeight: 116,
+    paddingHorizontal: 18,
+    paddingVertical: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#090D13",
+    borderRadius: 18,
+    backgroundColor: "#E5F3E8",
   },
-  loadingBrand: {
-    color: "#F3E9D9",
-    fontSize: 21,
-    fontWeight: "900",
-    letterSpacing: 3,
+  successCheckCircle: {
+    width: 34,
+    height: 34,
+    marginBottom: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 17,
+    backgroundColor: "#B9DCC1",
   },
-  loadingMessage: {
-    marginTop: 8,
-    color: "#B8A88F",
-    fontSize: 12,
+  successCheck: {
+    color: "#245C36",
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  successMessage: {
+    color: "#245C36",
+    fontSize: 15,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });
